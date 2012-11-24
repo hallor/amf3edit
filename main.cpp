@@ -3,13 +3,35 @@
 #include <stdio.h>
 
 
-char testInt[] = { 0x04, 0x89, 0x0c, 0x5, 0x3, 0x4};
+char testInt[] = { 0x04, 0xFF, 0xB0, 0x5, 0x3, 0x4};
 
 QByteArray ba(QByteArray::fromRawData(testInt, sizeof(testInt)));
 
-bool serializeInt(int from, QByteArray * to) {
+bool serializeInt(int from, QByteArray & to) {
     if (from > (2 << 29) - 1) // overflow
         return false;
+
+    int pos = 0;
+
+    while ((from & 0xFF000000) == 0){ // skip empty bytes
+        from <<=8;
+        pos ++;
+    }
+    printf("%08x -> Mam %d bajtow\n", from, 4 - pos);
+    return true;
+
+    while (from > 0 || pos < 4) {
+        unsigned char a = from & 0xFF000000 >> 24;
+        if (a > 0x7F) { // Overflow
+            a = (a >> 1) | 0x80;
+            to.append(a);
+            from <<= 7;
+        } else { // normal number
+            to.append(a);
+            from <<= 8;
+        }
+    }
+
 
     return false;
 }
@@ -49,5 +71,12 @@ int main(int argc, char *argv[])
     int i;
     deserializeInt(testInt, i);
     printf("-> %i\n", i);
+
+    serializeInt(0x34, ba);
+    serializeInt(0x34a, ba);
+    serializeInt(0x34bb, ba);
+    serializeInt(0x34bbc, ba);
+    serializeInt(0x34bbccd, ba);
+
     return 0;//a.exec();
 }
