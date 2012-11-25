@@ -12,8 +12,8 @@ QByteArray ba(QByteArray::fromRawData(testInt, sizeof(testInt)));
 
 class Serializable {
 public:
-    virtual bool read(QIODevice & dev) = 0;
     virtual bool write(QIODevice & /*dev*/) { return false; }
+    virtual bool read(QIODevice & dev) = 0;
     virtual QString toString() const {
         return QString("[serializable]");
     }
@@ -52,7 +52,7 @@ struct U29 : public Serializable {
     }
 
     QString toString() const {
-        return QString("[U29:%1").arg(value);
+        return QString("[U29:%1]").arg(value);
     }
 
 };
@@ -67,6 +67,7 @@ struct UTF_8_vr : public Serializable
         U29 m;
         if (!m.read(dev))
             return false;
+        printf(">>%02x<< ", m.value);
         if (m.value & 0x1) { // value
             ref = -1;
             value = dev.read(m.value >> 1);
@@ -80,10 +81,83 @@ struct UTF_8_vr : public Serializable
         if (ref >=0)
             return QString("[utf-8-r:%1]").arg(ref);
         else
-            return QString("[utf-8-v:%1").arg(value);
+            return QString("[utf-8-v:'%1']").arg(value);
     }
 
 };
+
+struct undefined_type : public Serializable
+{
+    virtual bool read(QIODevice & dev) {
+        return true; // has nosize
+    }
+
+    virtual QString toString() const {
+        return QString("[undefined]");
+    }
+
+};
+
+struct null_type : public Serializable
+{
+    virtual bool read(QIODevice & dev) {
+        return true; // has nosize
+    }
+
+    virtual QString toString() const {
+        return QString("[null]");
+    }
+
+};
+
+struct false_type : public Serializable
+{
+    virtual bool read(QIODevice & dev) {
+        return true; // has nosize
+    }
+
+    virtual QString toString() const {
+        return QString("[false]");
+    }
+
+};
+
+struct true_type : public Serializable
+{
+    virtual bool read(QIODevice & dev) {
+        return true; // has nosize
+    }
+
+    virtual QString toString() const {
+        return QString("[true]");
+    }
+
+};
+
+struct integer_type : public U29
+{
+    virtual bool read(QIODevice & dev) {
+        return U29::read(dev);
+    }
+
+    virtual QString toString() const {
+        return QString("[int:%1]").arg(value);
+    }
+};
+
+struct string_type : public UTF_8_vr
+{
+    virtual bool read(QIODevice & dev) {
+        return UTF_8_vr::read(dev);
+    }
+
+    virtual QString toString() const {
+        return QString("[string:%1]").arg(UTF_8_vr::toString());
+    }
+};
+
+
+
 
 
 bool serializeInt(int from, QByteArray & to) {
@@ -535,6 +609,16 @@ int main(int argc, char *argv[])
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
+    in.seek(0x1e0);
+    string_type v;
+    printf ("r: %d ", v.read(in));
+    printf("%s\n", v.toString().toAscii().constData());
+
+    integer_type v2;
+    in.seek(0x1ea); // skip symbol for now
+    printf ("r: %d ", v2.read(in));
+    printf("%s\n", v2.toString().toAscii().constData());
+#if 0
     Header h;
 
     printf("-> %d\n", h.read(in));
@@ -554,6 +638,6 @@ int main(int argc, char *argv[])
 //    printf("Read key: %s\n", k.name.toAscii().constBegin());
 
 //    printf("<- %d\n", h.write(out));
-
+#endif
     return 0;//a.exec();
 }
