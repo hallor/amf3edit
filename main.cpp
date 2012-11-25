@@ -82,6 +82,7 @@ struct Header : public Item {
         return str.status() == QDataStream::Ok;
     }
 };
+
 const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 
 bool serializeInt(int from, QByteArray & to) {
@@ -151,7 +152,8 @@ int main(int argc, char *argv[])
 
     serializeInt(0x34, ba);
 
-    QFile in("jacksmith_1.sol"), out("test.sol");
+    QFile in("intosp2.sol"),
+          out("test.sol");
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
