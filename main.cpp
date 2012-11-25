@@ -10,13 +10,28 @@ char testInt[] = { 0x04, 0xFF, 0xB0, 0x5, 0x3, 0x4};
 
 QByteArray ba(QByteArray::fromRawData(testInt, sizeof(testInt)));
 
-struct Header {
+class Item {
+public:
+    virtual quint8 code() = 0; // Code of item
+    virtual quint32 size() = 0;
+    virtual bool read(QIODevice & dev) = 0;
+    virtual bool write(QIODevice & dev) = 0;
+};
+
+struct Header : public Item {
     bool big_endian;
     quint32 file_size;
     QString root_name;
     quint8 version;
+    static const quint8 sign_valid[10];
 
-    bool readHeader(QIODevice & dev) {
+    quint8 code() { return 0; } // Code has no sense for Headers
+
+    quint32 size() { // Size of header (on disk)
+        return /*6 +*/ 10 + 2 + root_name.length() + 3 + 1;
+    }
+
+    bool read(QIODevice & dev) {
         QDataStream str(&dev); // by default big endian mode
         quint16 endi = 0;
         str >> endi;
@@ -29,7 +44,6 @@ struct Header {
             throw std::runtime_error("File size invalid.");
 
         char sign[10];
-        static const char sign_valid[10]={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
         str.readRawData(sign, sizeof(sign));
 
         if (memcmp(sign, sign_valid, sizeof(sign))) // invalid signature
@@ -47,14 +61,28 @@ struct Header {
         printf("Version: %x\n", version);
         if (version !=3) // Support only amfv3
             throw std::runtime_error("Unsupported version of AMF");
-
         return str.status() == QDataStream::Ok;
     }
 
-    bool writeHeader(QIODevice * dev) {
-        return true;
+    bool write(QIODevice & dev) {
+        QDataStream str(&dev); // by default big endian mode
+
+        if (big_endian)
+            str << (quint16)0x00BF;
+        else
+            str << (quint16)0xBF00;
+
+        str << (quint32)file_size;
+        str.writeRawData((char*)sign_valid, sizeof(sign_valid));
+        QByteArray strUtf(root_name.toUtf8());
+        str << (quint16) strUtf.size();
+        str.writeRawData(strUtf.constData(), strUtf.size());
+
+        str << (quint32) 0x00000003; // 3-byte padding + version
+        return str.status() == QDataStream::Ok;
     }
 };
+const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 
 bool serializeInt(int from, QByteArray & to) {
     if (from > (2 << 29) - 1) // overflow
@@ -125,13 +153,15 @@ int main(int argc, char *argv[])
 
     QFile in("jacksmith_1.sol"), out("test.sol");
     in.open(QIODevice::ReadOnly);
-    out.open(QIODevice::WriteOnly);
+    out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     Header h;
 
-    printf("%d\n", h.readHeader(in));
+    printf("-> %d\n", h.read(in));
 
     printf("Loaded %d bytes. Root name %s.\n", h.file_size, h.root_name.toAscii().constData());
+
+    printf("<- %d\n", h.write(out));
 
     return 0;//a.exec();
 }
