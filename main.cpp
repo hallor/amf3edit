@@ -10,6 +10,81 @@ char testInt[] = { 0x04, 0xFF, 0xB0, 0x5, 0x3, 0x4};
 
 QByteArray ba(QByteArray::fromRawData(testInt, sizeof(testInt)));
 
+class Serializable {
+public:
+    virtual bool read(QIODevice & dev) = 0;
+    virtual bool write(QIODevice & /*dev*/) { return false; }
+    virtual QString toString() const {
+        return QString("[serializable]");
+    }
+};
+
+struct U29 : public Serializable {
+
+    int value;
+
+    U29() : value(42) {}
+
+    bool read(QIODevice & dev)
+    {
+        value=0;
+
+        int i;
+        for (i=0; i<4; i++) { // up num 4 bytes
+            quint8 c;
+            dev.read((char*)&c, 1);
+
+            if (i != 3) {
+                value = value << 7;
+                value |= c & ~0x80;
+            }
+            else { // Last char has 8 bits
+                value = value << 8;
+                value |= c;
+            }
+
+            if ( (c & 0x80) == 0 )  // End of number
+                break;
+        }
+        if (value > 0x3fffFFFF)
+            return false;
+        return true;
+    }
+
+    QString toString() const {
+        return QString("[U29:%1").arg(value);
+    }
+
+};
+
+struct UTF_8_vr : public Serializable
+{
+    int ref;
+    QString value;
+
+    bool read(QIODevice & dev)
+    {
+        U29 m;
+        if (!m.read(dev))
+            return false;
+        if (m.value & 0x1) { // value
+            ref = -1;
+            value = dev.read(m.value >> 1);
+        } else { // ref
+            ref = m.value >> 1;
+        }
+        return true;
+    }
+
+    QString toString() const {
+        if (ref >=0)
+            return QString("[utf-8-r:%1]").arg(ref);
+        else
+            return QString("[utf-8-v:%1").arg(value);
+    }
+
+};
+
 
 bool serializeInt(int from, QByteArray & to) {
     if (from > (2 << 29) - 1) // overflow
@@ -380,12 +455,12 @@ struct value_string : public value {
 };
 
 struct value_array : public value {
-    int size;
+    int msize;
     int ref_id;
 
     quint8 code() { return 0x6; }
 
-    quint32 size() { return value::size() + s.size(); }
+    quint32 size() { return value::size() + msize; }
 
 
     bool readInt(QIODevice & dev) // TODO: handle of non-dense arrays
@@ -397,20 +472,20 @@ struct value_array : public value {
             return false;
 
         if (no & 0x1) { // dense
-            size = no >> 1;
+            msize = no >> 1;
             ref_id = -1;
-            dev.read(size);
+            dev.read(msize);
         } else { // ref
-            size =0;
+            msize =0;
             ref_id = no >> 1;
         }
 
 
-        return s.read(dev);
+        dev.read(msize);
     }
 
     QString stringify() {
-        if (s.ref_id >=0)
+        if (ref_id >=0)
             return value::stringify().arg("array_ref") + QString("= @%1").arg(ref_id);
         else
             return value::stringify().arg("array");
