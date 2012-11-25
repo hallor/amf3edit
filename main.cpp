@@ -4,7 +4,7 @@
 #include <QFile>
 #include <stdio.h>
 #include <stdexcept>
-
+#include <QVector>
 
 char testInt[] = { 0x04, 0xFF, 0xB0, 0x5, 0x3, 0x4};
 
@@ -67,7 +67,6 @@ struct UTF_8_vr : public Serializable
         U29 m;
         if (!m.read(dev))
             return false;
-        printf(">>%02x<< ", m.value);
         if (m.value & 0x1) { // value
             ref = -1;
             value = dev.read(m.value >> 1);
@@ -141,7 +140,7 @@ struct integer_type : public U29
     }
 
     virtual QString toString() const {
-        return QString("[int:%1]").arg(value);
+        return QString("[int:%1]").arg(U29::toString());
     }
 };
 
@@ -155,11 +154,71 @@ struct string_type : public UTF_8_vr
         return QString("[string:%1]").arg(UTF_8_vr::toString());
     }
 };
+// fwd decl
+Serializable * parse_value(QIODevice & dev);
+
+struct array_type : public Serializable // TODO: sparse arrays
+{
+    QVector<Serializable*> data;
+
+    virtual bool read(QIODevice & dev) {
+        U29 cnt;
+        if (!cnt.read(dev))
+            return false;
+
+        qDeleteAll(data);
+        data.clear();
+        if (cnt.value & 0x1) { // Normal array
+            int siz = cnt.value >> 1;
+            data.reserve(siz);
+            dev.read(1); // TODO: utf-8-empty -> assume assoc array empty
+            for (int i=0; i<siz; i++) { // fill data
+                data.append(parse_value(dev));
+            }
+        } else { // ref
+            return false;
+        }
 
 
+        return true;
+    }
 
+    virtual QString toString() const {
+        QString v = QString("[array[%1]: ").arg(data.size());
+        Serializable * s;
+        foreach(s, data)
+            v.append(s->toString()).append(", ");
+        v.append("]");
+        return v;
+    }
+};
 
+struct variable : public Serializable
+{
+    UTF_8_vr name;
+    Serializable * value;
 
+    virtual bool read(QIODevice & dev) {
+        if (!name.read(dev))
+            return false;
+        value = parse_value(dev); // TODO: mem mgmt
+        if (!value)
+            return false;
+        if (dev.pos() % 2) {// padding?
+            char c;
+            dev.getChar(&c);
+            if (c != 0)
+                return false;
+        }
+        return true;
+    }
+
+    virtual QString toString() const {
+        return QString("<%1:%2>").arg(name.toString(), value->toString());
+    }
+};
+
+#if 0
 bool serializeInt(int from, QByteArray & to) {
     if (from > (2 << 29) - 1) // overflow
         return false;
@@ -556,6 +615,7 @@ struct value_array : public value {
 
 
         dev.read(msize);
+        return false;
     }
 
     QString stringify() {
@@ -593,6 +653,28 @@ value * read_value(QIODevice & dev)
     ret->read(dev);
     return ret;
 }
+#endif
+
+Serializable * parse_value(QIODevice & dev)
+{
+    Serializable * ret = NULL;
+    quint8 code;
+    dev.read((char*)&code, 1);
+    switch (code)
+    {
+    case 0x00: ret = new undefined_type(); break;
+    case 0x01: ret = new null_type(); break;
+    case 0x02: ret = new false_type(); break;
+    case 0x03: ret = new true_type(); break;
+    case 0x04: ret = new integer_type(); break;
+    case 0x06: ret = new string_type(); break;
+    case 0x09: ret = new array_type(); break;
+    default:
+        return ret;
+    }
+    ret->read(dev);
+    return ret;
+}
 
 int main(int argc, char *argv[])
 {
@@ -609,15 +691,28 @@ int main(int argc, char *argv[])
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
-    in.seek(0x1e0);
+    in.seek(0x36);
+
+    variable v;
+    while (v.read(in)) {
+        printf("%s\n", v.toString().toAscii().constData());
+    }
+#if 0
     string_type v;
     printf ("r: %d ", v.read(in));
     printf("%s\n", v.toString().toAscii().constData());
 
-    integer_type v2;
-    in.seek(0x1ea); // skip symbol for now
-    printf ("r: %d ", v2.read(in));
-    printf("%s\n", v2.toString().toAscii().constData());
+    Serializable * v2;
+//    in.seek(0x1ea); // skip symbol for now
+    v2 = parse_value(in);
+    printf ("r: %p ", v2);
+    if (v2)
+        printf("%s\n", v2->toString().toAscii().constData());
+
+    printf("pos: %x\n", in.pos());
+    printf ("r: %d ", v.read(in));
+    printf("%s\n", v.toString().toAscii().constData());
+#endif
 #if 0
     Header h;
 
