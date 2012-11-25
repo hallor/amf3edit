@@ -40,29 +40,29 @@ bool serializeInt(int from, QByteArray & to) {
     return false;
 }
 
-bool deserializeInt(const QByteArray & from, int & to) {
-    to=0;
+bool deserializeInt(QIODevice & from, int & num) {
+    num=0;
 
-    if (from.at(0) != 0x4)
-        return false;
-
-    for (int i=0; i<4; i++) { // up to 4 bytes
-        int c = (unsigned char)from.at(i+1);
+    int i;
+    for (i=0; i<4; i++) { // up num 4 bytes
+        quint8 c;
+        from.read((char*)&c, 1);
 
         if (i != 3) {
-            to = to << 7;
-            to |= c & ~0x80;
+            num = num << 7;
+            num |= c & ~0x80;
         }
         else { // Last char has 8 bits
-            to = to << 8;
-            to |= c;
+            num = num << 8;
+            num |= c;
         }
 
         if ( (c & 0x80) == 0 )  // End of number
             break;
     }
+//    num_bytes = i+1;
 
-    if (to > 0x3fffFFFF)
+    if (num > 0x3fffFFFF)
         return false;
     return true;
 }
@@ -76,22 +76,26 @@ public:
 };
 
 // Utf8 String used as keys
-struct UtfKey : public Item
+struct UtfString : public Item
 { // Format: quint16 len | flag, name -> utf8
     QString name;
-    bool flag;
+    int ref_id; // if not, then reference
 
-    virtual quint32 size() { return name.toUtf8().size() + 2; }
+    virtual quint32 size() { return (ref_id >=0 ? 1 : name.toUtf8().size() + 2); } // TODO: handle reference size properly
 
     virtual bool read(QIODevice & dev)
     {
-        quint8 len;
-        dev.read((char*)&len, sizeof(len));
-        flag = (len & 0x1) == 1;
-        len >>= 1;
-        if (!flag)
-            throw std::runtime_error("Missing bit flag");
-        name = dev.read(len);
+        int len;
+        if (!deserializeInt(dev, len)) // get length
+            return false;
+        name.clear();
+        ref_id = -1; // reference has only 28 bits
+
+        if (len & 0x1){ // Normal string
+            name = dev.read(len >> 1);
+        } else { // reference
+            ref_id = len >> 1;
+        }
         return true;
     }
 
@@ -101,7 +105,7 @@ struct UtfKey : public Item
         bin_name = name.toUtf8();
         quint8 len = bin_name.length();
         len <<= 1;
-        if (flag)
+        if (ref_id < 0) // Todo: handle of refs
             len |= 1;
         dev.write((char*)len, sizeof(len));
         dev.write(bin_name);
@@ -177,7 +181,7 @@ struct Header : public Item {
 const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 
 struct value : public Item {
-    UtfKey key; // doczepiony
+    UtfString key; // doczepiony
     quint8 kod; // na przyczepke
     int pad; // liczba pad'ow
 
@@ -258,21 +262,167 @@ struct value_true : public value {
 };
 
 struct value_int : public value {
-    int num;
+    int num, num_bytes;
 
     value_int() : value(), num(42) {}
 
     quint8 code() { return 0x4; }
+
+    quint32 size() { return value::size() + num_bytes; }
+
+
+    bool readInt(QIODevice & dev)
+    {
+        if (! value::readInt(dev))
+            return false;
+
+        num=0;
+
+        int i;
+        for (i=0; i<4; i++) { // up num 4 bytes
+            quint8 c;
+            dev.read((char*)&c, 1);
+
+            if (i != 3) {
+                num = num << 7;
+                num |= c & ~0x80;
+            }
+            else { // Last char has 8 bits
+                num = num << 8;
+                num |= c;
+            }
+
+            if ( (c & 0x80) == 0 )  // End of number
+                break;
+        }
+        num_bytes = i+1;
+
+        if (num > 0x3fffFFFF)
+            return false;
+        return true;
+    }
+
+    bool writeInt(QIODevice & dev)
+    {
+        if (!value::writeInt(dev))
+            return false;
+
+        int val = num;
+
+        if (val > (2 << 29) - 1) // overflow
+            return false;
+
+        int pos = 0;
+
+        while ((val & 0xFF000000) == 0){ // skip empty bytes
+            val <<=8;
+            pos ++;
+        }
+
+//        printf("Mam val %08x, bajtow %d\n", val, 4 - pos);
+        pos = (4 - pos); // Num of bits
+//        quint8 v[pos];
+        return false; // TODO
+
+        for (int i=0; i<pos; i++) {
+//            if (val < 0xFF)
+        }
+
+        while (pos > 0) {
+            if (pos == 8) {// Last 8 bits
+                quint8 tmp = val >> 24;
+                dev.write((char*)&tmp, 1);
+                pos = 0;
+            } else  {
+                if (pos > 7) { // More than 7 bits left
+                    quint8 tmp = 0x80 | ( val >> 25 );
+                    dev.write((char*)&tmp, 1);
+                    val <<= 7;
+                    pos -= 7;
+                } else { // less than 7 bits left
+                    val <<= 8;
+                    pos -=8;
+                }
+            }
+        }
+
+        return true;
+    }
+
     QString stringify() {
         return value::stringify().arg("int") + QString("= %1").arg(num);
     }
+};
+
+struct value_string : public value {
+    UtfString s;
+
+    quint8 code() { return 0x6; }
+
+    quint32 size() { return value::size() + s.size(); }
+
+
+    bool readInt(QIODevice & dev)
+    {
+        if (! value::readInt(dev))
+            return false;
+
+        return s.read(dev);
+    }
+
+    QString stringify() {
+        if (s.ref_id >=0)
+            return value::stringify().arg("string_ref") + QString("= @%1").arg(s.ref_id);
+        else
+            return value::stringify().arg("string") + QString("= %1").arg(s.name);
+    }
+
+};
+
+struct value_array : public value {
+    int size;
+    int ref_id;
+
+    quint8 code() { return 0x6; }
+
+    quint32 size() { return value::size() + s.size(); }
+
+
+    bool readInt(QIODevice & dev) // TODO: handle of non-dense arrays
+    {
+        if (! value::readInt(dev))
+            return false;
+        int no;
+        if (!deserializeInt(dev, no))
+            return false;
+
+        if (no & 0x1) { // dense
+            size = no >> 1;
+            ref_id = -1;
+            dev.read(size);
+        } else { // ref
+            size =0;
+            ref_id = no >> 1;
+        }
+
+
+        return s.read(dev);
+    }
+
+    QString stringify() {
+        if (s.ref_id >=0)
+            return value::stringify().arg("array_ref") + QString("= @%1").arg(ref_id);
+        else
+            return value::stringify().arg("array");
+    }
+
 };
 
 
 value * read_value(QIODevice & dev)
 {
     value * ret = NULL;
-    UtfKey k;
+    UtfString k;
     if (!k.read(dev))
         return ret;
 
@@ -286,6 +436,7 @@ value * read_value(QIODevice & dev)
     case 0x02: ret = new value_false(); break;
     case 0x03: ret = new value_true(); break;
     case 0x04: ret = new value_int(); break;
+    case 0x06: ret = new value_string(); break;
     default:
         return ret;
     }
@@ -298,11 +449,11 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    int i;
-    deserializeInt(testInt, i);
-    printf("-> %i\n", i);
+//    int i;
+//    deserializeInt(testInt, i);
+//    printf("-> %i\n", i);
 
-    serializeInt(0x34, ba);
+//    serializeInt(0x34, ba);
 
     QFile in("jacksmith_1.sol"),
           out("test.sol");
@@ -315,16 +466,19 @@ int main(int argc, char *argv[])
 
     printf("Loaded %d bytes. Root name %s.\n", h.file_size, h.root_name.toAscii().constData());
 
+    in.seek(0x103);
     value * v;
-    while ( (v = read_value(in)) != NULL)
+    while ( (v = read_value(in)) != NULL) {
         printf("-> %s\n", v->stringify().toAscii().constData());
+//        v->write(out);
+    }
 
 //    UtfKey k;
 //    k.read(in);
 
 //    printf("Read key: %s\n", k.name.toAscii().constBegin());
 
-    printf("<- %d\n", h.write(out));
+//    printf("<- %d\n", h.write(out));
 
     return 0;//a.exec();
 }
