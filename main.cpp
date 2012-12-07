@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdexcept>
 #include <QVector>
+#include <QMap>
 
 char testInt[] = { 0x04, 0xFF, 0xB0, 0x5, 0x3, 0x4};
 
@@ -81,6 +82,13 @@ struct UTF_8_vr : public Serializable
 {
     int ref;
     QString value;
+
+    bool operator<(const UTF_8_vr & other) const {
+        if (ref >=0 )
+            return ref < other.ref;
+        else
+            return value < other.value;
+    }
 
     bool read(QIODevice & dev)
     {
@@ -201,6 +209,7 @@ Serializable * parse_value(QIODevice & dev, bool simple);
 struct array_type : public Serializable // TODO: sparse arrays
 {
     QVector<Serializable*> data;
+    QMap<UTF_8_vr, Serializable*> assoc; // assoc part
 
     virtual bool read(QIODevice & dev) {
         U29 cnt;
@@ -208,11 +217,19 @@ struct array_type : public Serializable // TODO: sparse arrays
             return false;
 
         qDeleteAll(data);
+        qDeleteAll(assoc);
         data.clear();
+        assoc.clear();
+
         if (cnt.value & 0x1) { // Normal array
             int siz = cnt.value >> 1;
-            data.reserve(siz);
-            dev.read(1); // TODO: utf-8-empty -> assume assoc array empty
+            data.reserve(siz); // size of dense part
+            UTF_8_vr v;
+            while (v.read(dev)) { // fill assoc
+                if (v.value.isEmpty()) // If empty -> this was last element of assoc. array
+                    break;
+                assoc[v] = parse_value(dev, true); // parse assoc value
+            }
             for (int i=0; i<siz; i++) { // fill data
                 data.append(parse_value(dev, true));
             }
@@ -227,6 +244,11 @@ struct array_type : public Serializable // TODO: sparse arrays
     virtual QString toString() const {
         QString v = QString("[array[%1]: ").arg(data.size());
         Serializable * s;
+        if (assoc.size()) {
+            foreach (UTF_8_vr key, assoc.keys()) { //semi optimal
+                v.append("{ ").append(key.toString()).append(" : ").append(assoc[key]->toString()).append("}");
+            }
+        }
         foreach(s, data)
             v.append(s->toString()).append(", ");
         v.append("]");
