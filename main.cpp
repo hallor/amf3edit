@@ -204,7 +204,7 @@ struct string_type : public UTF_8_vr
     }
 };
 // fwd decl
-Serializable * parse_value(QIODevice & dev, bool simple);
+Serializable * parse_value(QIODevice & dev);
 
 struct array_type : public Serializable // TODO: sparse arrays
 {
@@ -228,10 +228,10 @@ struct array_type : public Serializable // TODO: sparse arrays
             while (v.read(dev)) { // fill assoc
                 if (v.value.isEmpty()) // If empty -> this was last element of assoc. array
                     break;
-                assoc[v] = parse_value(dev, true); // parse assoc value
+                assoc[v] = parse_value(dev); // parse assoc value
             }
-            for (int i=0; i<siz; i++) { // fill data
-                data.append(parse_value(dev, true));
+            for (int i=0; i<siz; i++) { // fill dense
+                data.append(parse_value(dev));
             }
         } else { // ref
             return false;
@@ -268,15 +268,13 @@ struct variable : public Serializable
             return false;
         if (value)
             delete value;
-        value = parse_value(dev, false); // TODO: mem mgmt
-        if (!value)
+        value = parse_value(dev); // TODO: mem mgmt
+        if (!value)         
             return false;
-        if (dev.pos() % 2) {// padding?
-            char c;
-            dev.getChar(&c);
-            if (c != 0)
-                return false;
-        }
+        char x = 0;
+        dev.getChar(&x); // One byte pad after key-value pair
+        if (x!=0) // This should not happen
+            return false;
         return true;
     }
 
@@ -354,10 +352,11 @@ struct Header : public Item {
 const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 #endif
 
-Serializable * parse_value(QIODevice & dev, bool simple)
+Serializable * parse_value(QIODevice & dev)
 {
     Serializable * ret = NULL;
     quint8 code;
+    quint64 start_pos = dev.pos();
     dev.read((char*)&code, 1);
     switch (code)
     {
@@ -367,12 +366,16 @@ Serializable * parse_value(QIODevice & dev, bool simple)
     case 0x03: ret = new true_type(); break;
     case 0x04: ret = new integer_type(); break;
     case 0x06: ret = new string_type(); break;
-    case 0x09: if (!simple) ret = new array_type(); break;
+    case 0x09: ret = new array_type(); break;
     default:
         return ret;
     }
-    ret->read(dev);
-    return ret;
+    if (ret)
+        if (ret->read(dev))
+            return ret;
+    delete ret;
+    printf("Error reading token %X @%X, failed @%X\n", code, start_pos, dev.pos());
+    return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -385,17 +388,19 @@ int main(int argc, char *argv[])
 
 //    serializeInt(0x34, ba);
 
-    QFile in("jacksmith_1.sol"),
+    QFile in("jacksmith_2.sol"),
           out("test.sol");
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
-    in.seek(0x36);
+    in.seek(0x3f6);
 
     variable v;
     while (v.read(in)) {
         printf("%s\n", v.toString().toAscii().constData());
+//        break;
     }
+    printf("Finished @%X\n", in.pos());
 
 #if 0
     Header h;
@@ -404,12 +409,14 @@ int main(int argc, char *argv[])
 
     printf("Loaded %d bytes. Root name %s.\n", h.file_size, h.root_name.toAscii().constData());
 
-    in.seek(0x103);
+    in.seek(0x21);
     value * v;
-    while ( (v = read_value(in)) != NULL) {
+    while ( (v = read_value(in)) != NULL && !in.atEnd() ) {
         printf("-> %s\n", v->stringify().toAscii().constData());
+//        break;
 //        v->write(out);
     }
+
 
 //    UtfKey k;
 //    k.read(in);
