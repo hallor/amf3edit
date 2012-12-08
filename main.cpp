@@ -287,19 +287,22 @@ struct variable : public Serializable
     }
 };
 
-#if 0
-struct Header : public Item {
+
+struct Header : public Serializable {
     bool big_endian;
     quint32 file_size;
     QString root_name;
     quint8 version;
     static const quint8 sign_valid[10];
 
-    quint8 code() { return 0; } // Code has no sense for Headers
+    virtual QString toString() const {
+        QString v;
 
-    quint32 size() { // Size of header (on disk)
-        return /*6 +*/ 10 + 2 + root_name.length() + 3 + 1;
+        v = QString("[RootName: '%1']\n[Version: %2]\n").arg(root_name).arg(version);
+
+        return v;
     }
+
 
     bool read(QIODevice & dev) {
         QDataStream str(&dev); // by default big endian mode
@@ -328,12 +331,12 @@ struct Header : public Item {
         }
         str.skipRawData(3); // 3 bytes of crap
         str >> version;
-        printf("Version: %x\n", version);
+//        printf("Version: %x\n", version);
         if (version !=3) // Support only amfv3
             throw std::runtime_error("Unsupported version of AMF");
         return str.status() == QDataStream::Ok;
     }
-
+#if 0
     bool write(QIODevice & dev) {
         QDataStream str(&dev); // by default big endian mode
 
@@ -351,10 +354,10 @@ struct Header : public Item {
         str << (quint32) 0x00000003; // 3-byte padding + version
         return str.status() == QDataStream::Ok;
     }
-};
-
-const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 #endif
+};
+const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
+
 
 Serializable * parse_value(QIODevice & dev)
 {
@@ -398,7 +401,12 @@ int main(int argc, char *argv[])
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
-    in.seek(0x21);
+//    in.seek(0x21);
+
+    Header h;
+
+    h.read(in);
+    printf("%s", h.toString().toAscii().constData());
 
     variable v;
     while (v.read(in)) {
