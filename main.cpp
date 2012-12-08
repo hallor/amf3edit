@@ -388,13 +388,20 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-    QFile in("jacksmith_1.sol"),
-          out("test.sol");
+    QFile in;
+
+    if (argc > 1)
+        in.setFileName(argv[1]);
+    else
+        in.setFileName("jacksmith_1.sol");
+
+    QFile out("test.sol");
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
     Header h;
 
+    printf("Reading %s...\n", in.fileName().toAscii().constData());
     h.read(in);
     printf("%s", h.toString().toAscii().constData());
 
