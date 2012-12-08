@@ -33,7 +33,8 @@ struct U29 : public Serializable {
         int i;
         for (i=0; i<4; i++) { // up num 4 bytes
             quint8 c;
-            dev.read((char*)&c, 1);
+            if (!dev.read((char*)&c, 1))
+                return false;
 
             if (i != 3) {
                 value = value << 7;
@@ -98,6 +99,8 @@ struct UTF_8_vr : public Serializable
         if (m.value & 0x1) { // value
             ref = -1;
             value = dev.read(m.value >> 1);
+            if (dev.atEnd() && value.length() == 0) // detect EOF
+                return false;
         } else { // ref
             ref = m.value >> 1;
         }
@@ -272,7 +275,8 @@ struct variable : public Serializable
         if (!value)         
             return false;
         char x = 0;
-        dev.getChar(&x); // One byte pad after key-value pair
+        if (!dev.getChar(&x)) // One byte pad after key-value pair
+            return false;
         if (x!=0) // This should not happen
             return false;
         return true;
@@ -357,7 +361,8 @@ Serializable * parse_value(QIODevice & dev)
     Serializable * ret = NULL;
     quint8 code;
     quint64 start_pos = dev.pos();
-    dev.read((char*)&code, 1);
+    if (!dev.read((char*)&code, 1))
+        return NULL;
     switch (code)
     {
     case 0x00: ret = new undefined_type(); break;
@@ -393,7 +398,7 @@ int main(int argc, char *argv[])
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
 
-    in.seek(0x3f6);
+    in.seek(0x21);
 
     variable v;
     while (v.read(in)) {
