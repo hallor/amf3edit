@@ -331,12 +331,11 @@ struct Header : public Serializable {
         }
         str.skipRawData(3); // 3 bytes of crap
         str >> version;
-//        printf("Version: %x\n", version);
         if (version !=3) // Support only amfv3
             throw std::runtime_error("Unsupported version of AMF");
         return str.status() == QDataStream::Ok;
     }
-#if 0
+
     bool write(QIODevice & dev) {
         QDataStream str(&dev); // by default big endian mode
 
@@ -354,7 +353,6 @@ struct Header : public Serializable {
         str << (quint32) 0x00000003; // 3-byte padding + version
         return str.status() == QDataStream::Ok;
     }
-#endif
 };
 const quint8 Header::sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
 
@@ -390,18 +388,10 @@ int main(int argc, char *argv[])
 {
     QCoreApplication a(argc, argv);
 
-//    int i;
-//    deserializeInt(testInt, i);
-//    printf("-> %i\n", i);
-
-//    serializeInt(0x34, ba);
-
-    QFile in("jacksmith_2.sol"),
+    QFile in("jacksmith_1.sol"),
           out("test.sol");
     in.open(QIODevice::ReadOnly);
     out.open(QIODevice::WriteOnly | QIODevice::Truncate);
-
-//    in.seek(0x21);
 
     Header h;
 
@@ -411,32 +401,8 @@ int main(int argc, char *argv[])
     variable v;
     while (v.read(in)) {
         printf("%s\n", v.toString().toAscii().constData());
-//        break;
     }
     printf("Finished @%X\n", in.pos());
 
-#if 0
-    Header h;
-
-    printf("-> %d\n", h.read(in));
-
-    printf("Loaded %d bytes. Root name %s.\n", h.file_size, h.root_name.toAscii().constData());
-
-    in.seek(0x21);
-    value * v;
-    while ( (v = read_value(in)) != NULL && !in.atEnd() ) {
-        printf("-> %s\n", v->stringify().toAscii().constData());
-//        break;
-//        v->write(out);
-    }
-
-
-//    UtfKey k;
-//    k.read(in);
-
-//    printf("Read key: %s\n", k.name.toAscii().constBegin());
-
-//    printf("<- %d\n", h.write(out));
-#endif
     return 0;//a.exec();
 }
