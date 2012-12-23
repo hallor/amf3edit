@@ -1,8 +1,8 @@
 #include <QtCore/QCoreApplication>
 #include <QFile>
 #include <stdio.h>
-#include <stdexcept>
 
+#include "exception.h"
 #include "sotfile.h"
 
 int main(int argc, char *argv[])
@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
 
     try {
         f.load(in);
-    } catch (std::exception & e) {
+    } catch (ReadException & e) {
         printf("%s\n", e.what());
     }
 

@@ -24,7 +24,7 @@ public:
     QList<Variable*> getTree() { return m_data; }
 private:
     QString m_rootName;
-    int m_version;
+    quint8 m_version;
     bool m_bigEndian;
     QList<Variable*> m_data;
 };

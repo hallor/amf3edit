@@ -30,7 +30,6 @@ void SotFile::load(QIODevice & from)
         m_data.clear();
     }
 
-
     QDataStream str(&from); // by default big endian mode
     quint16 endi = 0;
     str >> endi;
