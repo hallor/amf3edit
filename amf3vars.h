@@ -1,15 +1,18 @@
 #ifndef AMF3VARS_H
 #define AMF3VARS_H
+#include "Serializable.h"
+
+namespace amf3 {
 
 struct U29 : public Serializable {
 
-    int value;
+    int m_value;
 
-    U29() : value(42) {}
+    U29() : m_value(42) {}
 
     bool read(QIODevice & dev)
     {
-        value=0;
+        m_value=0;
 
         int i;
         for (i=0; i<4; i++) { // up num 4 bytes
@@ -18,18 +21,18 @@ struct U29 : public Serializable {
                 return false;
 
             if (i != 3) {
-                value = value << 7;
-                value |= c & ~0x80;
+                m_value = m_value << 7;
+                m_value |= c & ~0x80;
             }
             else { // Last char has 8 bits
-                value = value << 8;
-                value |= c;
+                m_value = m_value << 8;
+                m_value |= c;
             }
 
             if ( (c & 0x80) == 0 )  // End of number
                 break;
         }
-        if (value > 0x3fffFFFF)
+        if (m_value > 0x3fffFFFF)
             return false;
         return true;
     }
@@ -55,7 +58,7 @@ struct U29 : public Serializable {
 
 
     QString toString() const {
-        return QString("[U29:%1]").arg(value);
+        return QString("[U29:%1]").arg(m_value);
     }
 
 };
@@ -77,13 +80,13 @@ struct UTF_8_vr : public Serializable
         U29 m;
         if (!m.read(dev))
             return false;
-        if (m.value & 0x1) { // value
+        if (m.m_value & 0x1) { // value
             ref = -1;
-            value = dev.read(m.value >> 1);
+            value = dev.read(m.m_value >> 1);
             if (dev.atEnd() && value.length() == 0) // detect EOF
                 return false;
         } else { // ref
-            ref = m.value >> 1;
+            ref = m.m_value >> 1;
         }
         return true;
     }
@@ -205,8 +208,8 @@ struct array_type : public Serializable // TODO: sparse arrays
         data.clear();
         assoc.clear();
 
-        if (cnt.value & 0x1) { // Normal array
-            int siz = cnt.value >> 1;
+        if (cnt.m_value & 0x1) { // Normal array
+            int siz = cnt.m_value >> 1;
             data.reserve(siz); // size of dense part
             UTF_8_vr v;
             while (v.read(dev)) { // fill assoc
@@ -239,5 +242,5 @@ struct array_type : public Serializable // TODO: sparse arrays
         return v;
     }
 };
-
+} // namespace
 #endif // AMF3VARS_H

@@ -6,7 +6,7 @@ class Variable;
 class Parser
 {
 public:
-    virtual Variable * read(QIODevice & dev) throw() = 0;
+    virtual Variable * read(QIODevice & dev) const throw() = 0;
 };
 
 #endif // PARSER_H

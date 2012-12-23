@@ -6,7 +6,7 @@ class Variable;
 class AmfParser : public Parser
 {
 public:
-    Variable * read(QIODevice & dev) throw();
+    Variable * read(QIODevice & dev) const throw();
 };
 
 #endif // AMFPARSER_H

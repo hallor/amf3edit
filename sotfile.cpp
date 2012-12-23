@@ -23,6 +23,12 @@ SotFile::~SotFile()
 // TODO: nice handle of >> reads
 void SotFile::load(QIODevice & from)
 {
+    if (m_data.count()) {
+        qDeleteAll(m_data);
+        m_data.clear();
+    }
+
+
     QDataStream str(&dev); // by default big endian mode
     quint16 endi = 0;
     str >> endi;
@@ -62,7 +68,7 @@ void SotFile::load(QIODevice & from)
     std::auto_ptr<Parser> p;
 
     if (m_version == 3)
-        p = new Amf3Parser();
+        p.reset(new Amf3Parser());
 
     while (! str.atEnd()) {
         Variable * v;

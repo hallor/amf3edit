@@ -1,33 +1,38 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
+#include <QString>
 #include "Serializable.h"
 
-struct Variable : public Serializable
+class Parser;
+namespace amf3 {
+class UTF_8_vr;
+}
+class QIODevice;
+
+class Variable : public Serializable
 {
-    UTF_8_vr name;
-    Serializable * value;
+public:
+    Variable();
+    ~Variable();
 
-    variable() : value(NULL) {}
+    void read(QIODevice & dev, const Parser & parser);
 
-    virtual bool read(QIODevice & dev) {
-        if (!name.read(dev))
-            return false;
-        if (value)
-            delete value;
-        value = parse_value(dev); // TODO: mem mgmt
-        if (!value)
-            return false;
-        char x = 0;
-        if (!dev.getChar(&x)) // One byte pad after key-value pair
-            return false;
-        if (x!=0) // This should not happen
-            return false;
-        return true;
+    QString toString() const;
+
+    bool isComplex()
+    {
+        if (m_value)
+            return m_value->isComplex();
+        return false;
     }
 
-    virtual QString toString() const {
-        return QString("<%1:%2>").arg(name.toString(), value->toString());
-    }
+    QString name() const;
+    const Serializable * value() const { return m_value; }
+    Serializable * value() { return m_value; }
+
+private:
+    amf3::UTF_8_vr * m_name;
+    Serializable * m_value;
 };
 
 #endif // VARIABLE_H

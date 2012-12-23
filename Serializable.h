@@ -3,11 +3,13 @@
 
 class Serializable {
 public:
-    virtual bool write(QIODevice & /*dev*/) { return false; }
-    virtual bool read(QIODevice & dev) = 0;
+    virtual void write(QIODevice & /*dev*/) const throw() { }
+    virtual void read(QIODevice & dev) throw() = 0;
     virtual QString toString() const {
         return QString("[serializable]");
     }
+    // Returns true if type is complex
+    virtual bool isComplex() { return false; }
 };
 
 #endif // SERIALIZABLE_H

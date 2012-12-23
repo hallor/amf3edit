@@ -7,7 +7,7 @@ class Amf3Parser : public Parser
 {
 public:
     Amf3Parser();
-    Variable * read(QIODevice & dev) throw();
+    Variable * read(QIODevice & dev) const throw();
 };
 
 #endif // AMF3PARSER_H
