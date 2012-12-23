@@ -1,10 +1,12 @@
 #ifndef AMFPARSER_H
 #define AMFPARSER_H
+#include "parser.h"
 
-class AmfParser
+class Variable;
+class AmfParser : public Parser
 {
 public:
-    AmfParser();
+    Variable * read(QIODevice & dev) throw();
 };
 
 #endif // AMFPARSER_H

@@ -19,7 +19,8 @@ SOURCES += main.cpp \
     amf3parser.cpp \
     sotfile.cpp \
     amfparser.cpp \
-    variable.cpp
+    variable.cpp \
+    amf3vars.cpp
 
 HEADERS += \
     amf3parser.h \
@@ -28,4 +29,5 @@ HEADERS += \
     amfparser.h \
     variable.h \
     readexception.h \
-    parser.h
+    parser.h \
+    amf3vars.h
