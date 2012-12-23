@@ -15,8 +15,8 @@ void U29::read(QIODevice & dev)
     int i;
     for (i=0; i<4; i++) { // up num 4 bytes
         quint8 c;
-        if (!dev.read((char*)&c, 1))
-            return false;
+        if (dev.read((char*)&c, 1) < 1)
+            throw ReadException(dev);
 
         if (i != 3) {
             m_value = m_value << 7;
@@ -34,7 +34,7 @@ void U29::read(QIODevice & dev)
         throw std::logic_error("Integer overflow");
 }
 
-void U29::write(QIODevice & dev) { // TODO: refactor
+void U29::write(QIODevice & /*dev*/) const { // TODO: refactor
     throw std::runtime_error("Not implemented");
 }
 
@@ -44,7 +44,7 @@ bool UTF_8_vr::operator<(const UTF_8_vr & other) const {
     if (ref >=0 )
         return ref < other.ref;
     else
-        return value < other.value;
+        return m_value < other.m_value;
 }
 
 void UTF_8_vr::read(QIODevice & dev)
@@ -55,8 +55,8 @@ void UTF_8_vr::read(QIODevice & dev)
 
     if (m.value() & 0x1) { // value
         ref = -1;
-        value = dev.read(m.value() >> 1);
-        if (dev.atEnd() && value.length() == 0) // detect EOF
+        m_value = dev.read(m.value() >> 1);
+        if (dev.atEnd() && m_value.length() == 0) // detect EOF
             throw ReadException(dev);
     } else { // ref
         ref = m.value() >> 1;
@@ -67,14 +67,14 @@ void UTF_8_vr::read(QIODevice & dev)
 void integer_type::write(QIODevice &dev) const
 {
     char d = 0x4;
-    if (dev.write(d, 1) < 1)
+    if (dev.write(&d, 1) < 1)
         throw WriteException(dev);
     U29::write(dev);
 }
 
 
 //////////////////////////////////////////////// ARRAY
-void array_type::read(QIODevice &dev, const Parser &parser)
+void array_type::read(QIODevice &dev)
 {
     U29 cnt;
 
@@ -85,17 +85,18 @@ void array_type::read(QIODevice &dev, const Parser &parser)
     data.clear();
     assoc.clear();
 
-    if (cnt.m_value & 0x1) { // Normal array
-        int siz = cnt.m_value >> 1;
+    if (cnt.value() & 0x1) { // Normal array
+        int siz = cnt.value() >> 1;
         data.reserve(siz); // size of dense part
         UTF_8_vr v;
-        while (v.read(dev)) { // fill assoc
-            if (v.value.isEmpty()) // If empty -> this was last element of assoc. array
+        while (!dev.atEnd()) { // fill assoc
+            v.read(dev);
+            if (v.value().isEmpty()) // If empty -> this was last element of assoc. array
                 break;
-            assoc[v] = parser.read(dev); // parse assoc value
+            assoc[v] = parser.readValue(dev); // parse assoc value
         }
         for (int i=0; i<siz; i++) { // fill dense
-            data.append(parser.read(dev));
+            data.append(parser.readValue(dev));
         }
     } else { // ref
         throw ReadException(dev, "Referenced arrays not supported.");

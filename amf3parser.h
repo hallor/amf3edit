@@ -7,7 +7,6 @@ class Value;
 class Amf3Parser : public Parser
 {
 public:
-    Amf3Parser();
     Variable * readVariable(QIODevice & dev) const;
     Value * readValue(QIODevice & dev) const;
 };

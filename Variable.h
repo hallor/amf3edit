@@ -12,10 +12,10 @@ class Value;
 class Variable : public Serializable
 {
 public:
-    Variable();
+    Variable(const Parser & parser);
     ~Variable();
 
-    void read(QIODevice & dev, const Parser & parser);
+    void read(QIODevice & dev);
 
     QString toString() const;
 
@@ -26,6 +26,7 @@ public:
     Value * value() { return m_value; }
 
 private:
+    const Parser & m_parser;
     amf3::UTF_8_vr * m_name;
     Value * m_value;
 };

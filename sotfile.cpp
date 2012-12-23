@@ -9,6 +9,8 @@
 
 namespace {
 const quint8 sign_valid[] ={'T','C','S', 'O', 0, 4, 0, 0, 0, 0};
+
+const Parser * parsers[] = { new AmfParser(), new Amf3Parser() };
 }
 
 SotFile::SotFile() : m_rootName("Unknown"), m_version(-1), m_bigEndian(true)
@@ -29,7 +31,7 @@ void SotFile::load(QIODevice & from)
     }
 
 
-    QDataStream str(&dev); // by default big endian mode
+    QDataStream str(&from); // by default big endian mode
     quint16 endi = 0;
     str >> endi;
     m_bigEndian = endi == 0x00BF;
@@ -39,15 +41,15 @@ void SotFile::load(QIODevice & from)
 
     int file_size;
     str >> file_size;
-    if (file_size + 6 != dev.size()) // to fit rest of data
-        throw ReadException(dev, "Declared file size differs from real one.");
+    if (file_size + 6 != from.size()) // to fit rest of data
+        throw ReadException(from, "Declared file size differs from real one.");
 
     char sign[10];
     if (str.readRawData(sign, sizeof(sign)) < 0)
         throw ReadException(from);
 
     if (memcmp(sign, sign_valid, sizeof(sign))) // invalid signature
-        throw ReadException("TCSO signature not found.");
+        throw ReadException(from, "TCSO signature not found.");
 
     quint16 root_len = 0;
     str >> root_len;
@@ -63,17 +65,16 @@ void SotFile::load(QIODevice & from)
     str >> m_version;
 
     if (m_version !=3) // Support only amfv3
-        throw ReadException("Unsupported AMF version");
+        throw ReadException(from, "Unsupported AMF version");
 
-    std::auto_ptr<Parser> p;
-
+    const Parser * p;
     if (m_version == 3)
-        p.reset(new Amf3Parser());
+        p = parsers[1]; // TODO
 
     while (! str.atEnd()) {
         Variable * v;
 
-        v = p->readVariable(dev);
+        v = p->readVariable(from);
         if (v)
             m_data.push_back(v);
     }
@@ -83,7 +84,7 @@ QString SotFile::toString() const
 {
     QString v;
 
-    v = QString("[RootName: '%1']\n[Version: %2]\n").arg(root_name).arg(version);
+    v = QString("[RootName: '%1']\n[Version: %2]\n").arg(m_rootName).arg(m_version);
 
     foreach(Variable * var, m_data)
         v.append(var->toString());
@@ -91,7 +92,7 @@ QString SotFile::toString() const
     return v;
 }
 
-void SotFile::save(QIODevice & to) const
+void SotFile::save(QIODevice & /*to*/) const
 {
 
     throw std::logic_error("Not implemented");

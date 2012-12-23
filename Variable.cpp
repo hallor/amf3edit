@@ -7,7 +7,7 @@
 using amf3::UTF_8_vr;
 using std::auto_ptr;
 
-Variable::Variable() : m_name(NULL), m_value(NULL)
+Variable::Variable(const Parser & parser) : m_parser(parser), m_name(NULL), m_value(NULL)
 {
 }
 
@@ -19,7 +19,7 @@ Variable::~Variable()
     m_name = NULL;
 }
 
-void Variable::read(QIODevice &dev, const Parser &parser)
+void Variable::read(QIODevice &dev)
 {
     if (!m_name)
         m_name = new amf3::UTF_8_vr();
@@ -29,7 +29,7 @@ void Variable::read(QIODevice &dev, const Parser &parser)
     if (m_value)
         delete m_value;
 
-    m_value = parser.readValue(dev);
+    m_value = m_parser.readValue(dev);
 
     if (!m_value)
         throw ReadException(dev, "Failed to parse value.");
@@ -40,12 +40,13 @@ void Variable::read(QIODevice &dev, const Parser &parser)
         throw ReadException(dev);
 
     if (x!=0) // This should not happen
-        throw ReadException("WTF");
+        throw ReadException(dev, "WTF");
 }
 
 QString Variable::toString() const
 {
-    return QString("<%1:%2>").arg(m_name.toString(), m_value->toString());
+    return QString("<%1:%2>").arg(m_name->toString())
+            .arg(m_value->toString());
 }
 
 bool Variable::isComplex()
@@ -58,6 +59,6 @@ bool Variable::isComplex()
 QString Variable::name() const
 {
     if (m_name)
-        return m_name->value;
+        return m_name->valueAsString();
     return QString("??");
 }
