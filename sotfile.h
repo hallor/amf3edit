@@ -1,28 +1,32 @@
-#ifndef SOLREADER_H
-#define SOLREADER_H
+#ifndef SOTFILE_H
+#define SOTFILE_H
 #include <QString>
-#include "variable.h"
+#include <QList>
 
-class SolFile
+class Variable;
+class QIODevice;
+class SotFile
 {
 public:
-    SolFile();
+    SotFile();
+    ~SotFile();
 
-    bool load(QIODevice & from);
-    bool save(QIODevice & to) const;
+    void load(QIODevice & from) throw();
+    void save(QIODevice & to) const throw();
 
-    QString rootName() const;
-    int version() const;
-    bool bigEndian() const;
+    QString rootName() const { return m_rootName; }
+    int version() const { return m_version; }
+    bool bigEndian() const { return m_bigEndian; }
 
-    // Editable tree, variables have one instance and should be not removed for now
-    QList<Variable*> getTree();
+    QString toString() const;
+
+    // Editable tree, variables have one instance and should be not removed for now. Class owns data.
+    QList<Variable*> getTree() { return m_data; }
 private:
-    QString rootName;
-    int version;
-    bool bigEndian;
-    QList<Variable*> data;
-    bool valid;
+    QString m_rootName;
+    int m_version;
+    bool m_bigEndian;
+    QList<Variable*> m_data;
 };
 
-#endif // SOLREADER_H
+#endif // SOTFILE_H

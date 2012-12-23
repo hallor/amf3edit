@@ -1,6 +1,7 @@
 #ifndef AMF3PARSER_H
 #define AMF3PARSER_H
 #include "Serializable.h"
+#include "parser.h"
 
 struct U29 : public Serializable {
 
@@ -241,11 +242,11 @@ struct array_type : public Serializable // TODO: sparse arrays
     }
 };
 
-class Amf3Parser
+class Amf3Parser : public Parser
 {
 public:
     Amf3Parser();
-    Serializable * parse_value(QIODevice & dev)
+    Variable * read(QIODevice & dev) throw()
     {
         Serializable * ret = NULL;
         quint8 code;

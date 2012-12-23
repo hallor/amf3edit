@@ -26,4 +26,6 @@ HEADERS += \
     Serializable.h \
     sotfile.h \
     amfparser.h \
-    variable.h
+    variable.h \
+    readexception.h \
+    parser.h
