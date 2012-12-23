@@ -19,12 +19,7 @@ public:
 
     QString toString() const;
 
-    bool isComplex()
-    {
-        if (m_value)
-            return m_value->isComplex();
-        return false;
-    }
+    bool isComplex();
 
     QString name() const;
     const Value* value() const { return m_value; }

@@ -10,15 +10,15 @@ class ReadException : public std::exception
 {
 public:
     explicit ReadException(int where, const char * msg) {
-        snprintf(msg, MAXLEN, "ReadException at %d (%x): %s", where, where, msg);
+        snprintf(this->msg, MAXLEN, "ReadException at %d (%x): %s", where, where, msg);
     }
 
     explicit ReadException(const QIODevice & dev, const char * msg) {
-        snprintf(msg, MAXLEN, "ReadException at %d (%x): %s", dev.pos(), dev.pos(), msg);
+        snprintf(this->msg, MAXLEN, "ReadException at %lld (%llx): %s", dev.pos(), dev.pos(), msg);
     }
 
     explicit ReadException(const QIODevice & dev) {
-        snprintf(msg, MAXLEN, "ReadException at %d (%x): %s", dev.pos(), dev.pos(), dev.errorString().toAscii().constData());
+        snprintf(this->msg, MAXLEN, "ReadException at %lld (%llx): %s", dev.pos(), dev.pos(), dev.errorString().toAscii().constData());
     }
 
     virtual const char * what() {
@@ -32,15 +32,15 @@ class WriteException : public std::exception
 {
 public:
     explicit WriteException(int where, const char * msg) {
-        snprintf(msg, MAXLEN, "WriteException at %d (%x): %s", where, where, msg);
+        snprintf(this->msg, MAXLEN, "WriteException at %d (%x): %s", where, where, msg);
     }
 
     explicit WriteException(const QIODevice & dev, const char * msg) {
-        snprintf(msg, MAXLEN, "WriteException at %d (%x): %s", dev.pos(), dev.pos(), msg);
+        snprintf(this->msg, MAXLEN, "WriteException at %lld (%llx): %s", dev.pos(), dev.pos(), msg);
     }
 
     explicit WriteException(const QIODevice & dev) {
-        snprintf(msg, MAXLEN, "WriteException at %d (%x): %s", dev.pos(), dev.pos(), dev.errorString().toAscii().constData());
+        snprintf(this->msg, MAXLEN, "WriteException at %lld (%llx): %s", dev.pos(), dev.pos(), dev.errorString().toAscii().constData());
     }
 
     virtual const char * what() {

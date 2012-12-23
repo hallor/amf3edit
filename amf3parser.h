@@ -8,8 +8,8 @@ class Amf3Parser : public Parser
 {
 public:
     Amf3Parser();
-    Variable * readVariable(QIODevice & dev) const throw();
-    Value * readValue(QIODevice & dev) const throw();
+    Variable * readVariable(QIODevice & dev) const;
+    Value * readValue(QIODevice & dev) const;
 };
 
 #endif // AMF3PARSER_H

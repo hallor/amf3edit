@@ -16,8 +16,8 @@ public:
 
     U29();
 
-    void read(QIODevice & dev);
-    void write(QIODevice & dev);
+    void read(QIODevice & dev) ;
+    void write(QIODevice & dev) ;
 
     int value() const { return m_value; }
     void setValue(int v) { m_value = v; }
@@ -38,7 +38,7 @@ public:
 
     bool operator<(const UTF_8_vr & other) const;
 
-    void read(QIODevice & dev);
+    void read(QIODevice & dev) ;
 
     QString toString() const {
         if (ref >=0)
@@ -52,15 +52,13 @@ public:
 class undefined_type : public Value
 {
 public:
-    virtual bool read(QIODevice & dev) {
-        return true; // has nosize
+    void read(QIODevice & /*dev*/) {    }
+
+    void write(QIODevice & dev) {
+        dev.putChar(0); // Just marker
     }
 
-    virtual bool write(QIODevice & dev) {
-        return dev.putChar(0); // Just marker
-    }
-
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[undefined]");
     }
 
@@ -69,15 +67,13 @@ public:
 class null_type : public Value
 {
 public:
-    virtual bool read(QIODevice & dev) {
-        return true; // has nosize
+    void read(QIODevice & /*dev*/) {    }
+
+    void write(QIODevice & dev) {
+        dev.putChar(0x1); // Just marker
     }
 
-    virtual bool write(QIODevice & dev) {
-        return dev.putChar(0x1); // Just marker
-    }
-
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[null]");
     }
 
@@ -86,15 +82,13 @@ public:
 class false_type : public Value
 {
 public:
-    virtual bool read(QIODevice & dev) {
-        return true; // has nosize
+    void read(QIODevice & /*dev*/) {    }
+
+    void write(QIODevice & dev) {
+        dev.putChar(0x2); // Just marker
     }
 
-    virtual bool write(QIODevice & dev) {
-        return dev.putChar(0x2); // Just marker
-    }
-
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[false]");
     }
 
@@ -103,15 +97,13 @@ public:
 class true_type : public Value
 {
 public:
-    virtual bool read(QIODevice & dev) {
-        return true; // has nosize
+    void read(QIODevice & /*dev*/) {    }
+
+    void write(QIODevice & dev) {
+        dev.putChar(0x3); // Just marker
     }
 
-    virtual bool write(QIODevice & dev) {
-        return dev.putChar(0x3); // Just marker
-    }
-
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[true]");
     }
 
@@ -120,9 +112,9 @@ public:
 class integer_type : public U29
 {
 public:
-    void write(QIODevice &dev) const throw();
+    void write(QIODevice &dev) const ;
 
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[int:%1]").arg(U29::toString());
     }
 };
@@ -130,7 +122,7 @@ public:
 class string_type : public UTF_8_vr
 {
 public:
-    virtual QString toString() const {
+    QString toString() const {
         return QString("[string:%1]").arg(UTF_8_vr::toString());
     }
 };
@@ -141,11 +133,11 @@ class array_type : public Value // TODO: sparse arrays
     QMap<UTF_8_vr, Value*> assoc; // assoc part
 public:
 
-    void read(QIODevice & dev, const Parser & parser) throw();
+    void read(QIODevice & dev, const Parser & parser) ;
 
     bool isComplex() const { return true; }
 
-    virtual QString toString() const;
+    QString toString() const;
 };
 
 } // namespace

@@ -11,8 +11,8 @@ public:
     SotFile();
     ~SotFile();
 
-    void load(QIODevice & from) throw();
-    void save(QIODevice & to) const throw();
+    void load(QIODevice & from) ;
+    void save(QIODevice & to) const ;
 
     QString rootName() const { return m_rootName; }
     int version() const { return m_version; }

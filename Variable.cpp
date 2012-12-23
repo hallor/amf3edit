@@ -48,6 +48,13 @@ QString Variable::toString() const
     return QString("<%1:%2>").arg(m_name.toString(), m_value->toString());
 }
 
+bool Variable::isComplex()
+{
+    if (m_value)
+        return m_value->isComplex();
+    return false;
+}
+
 QString Variable::name() const
 {
     if (m_name)

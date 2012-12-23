@@ -25,11 +25,11 @@ int main(int argc, char *argv[])
     try {
         f.load(in);
     } catch (std::exception & e) {
-        printf("%s\n", e.what);
+        printf("%s\n", e.what());
     }
 
     printf("%s\n", f.toString().toAscii().constData());
-    printf("Finished @%X\n", in.pos());
+    printf("Finished @%llX\n", in.pos());
 
     return 0;//a.exec();
 }
