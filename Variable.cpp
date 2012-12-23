@@ -1,8 +1,8 @@
 #include <auto_ptr.h>
-#include "variable.h"
-#include "parser.h"
+#include "Variable.h"
+#include "Parser.h"
 #include "amf3vars.h"
-#include "readexception.h"
+#include "exception.h"
 
 using amf3::UTF_8_vr;
 using std::auto_ptr;
@@ -29,7 +29,7 @@ void Variable::read(QIODevice &dev, const Parser &parser)
     if (m_value)
         delete m_value;
 
-    m_value = parser.read(dev);
+    m_value = parser.readValue(dev);
 
     if (!m_value)
         throw ReadException(dev, "Failed to parse value.");

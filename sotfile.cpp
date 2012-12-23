@@ -2,8 +2,8 @@
 #include <memory>
 
 #include "sotfile.h"
-#include "readexception.h"
-#include "variable.h"
+#include "exception.h"
+#include "Variable.h"
 #include "amf3parser.h"
 #include "amfparser.h"
 
@@ -73,7 +73,7 @@ void SotFile::load(QIODevice & from)
     while (! str.atEnd()) {
         Variable * v;
 
-        v = p->read(dev);
+        v = p->readVariable(dev);
         if (v)
             m_data.push_back(v);
     }

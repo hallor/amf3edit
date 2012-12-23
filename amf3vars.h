@@ -1,61 +1,26 @@
 #ifndef AMF3VARS_H
 #define AMF3VARS_H
-#include "Serializable.h"
+#include <QString>
+#include <QIODevice>
+#include <QMap>
+#include <QVector>
+#include "Value.h"
 
+class Parser;
 namespace amf3 {
 
-struct U29 : public Serializable {
+class U29 : public Value {
 
     int m_value;
+public:
 
-    U29() : m_value(42) {}
+    U29();
 
-    bool read(QIODevice & dev)
-    {
-        m_value=0;
+    void read(QIODevice & dev);
+    void write(QIODevice & dev);
 
-        int i;
-        for (i=0; i<4; i++) { // up num 4 bytes
-            quint8 c;
-            if (!dev.read((char*)&c, 1))
-                return false;
-
-            if (i != 3) {
-                m_value = m_value << 7;
-                m_value |= c & ~0x80;
-            }
-            else { // Last char has 8 bits
-                m_value = m_value << 8;
-                m_value |= c;
-            }
-
-            if ( (c & 0x80) == 0 )  // End of number
-                break;
-        }
-        if (m_value > 0x3fffFFFF)
-            return false;
-        return true;
-    }
-
-    virtual bool write(QIODevice & dev) { // TODO: refactor
-        bool ret = true;
-        ret &= dev.putChar(0x4); // Marker
-#if 0
-        int bytes;
-        if (value <= 0x7f) { // 1 byte
-            bytes = 1;
-        } else if (value <= 0x3fff) { // 2 bytes
-            bytes = 2;
-        } else if (value <= 0x1fFFFF) { // 3 bytes
-            bytes = 3;
-        } else if (value <= 0x3fffFFFF) { // 4 bytes
-            bytes = 4;
-        } else // out of range
-            return false;
-#endif
-        return ret;
-    }
-
+    int value() const { return m_value; }
+    void setValue(int v) { m_value = v; }
 
     QString toString() const {
         return QString("[U29:%1]").arg(m_value);
@@ -63,33 +28,17 @@ struct U29 : public Serializable {
 
 };
 
-struct UTF_8_vr : public Serializable
+class UTF_8_vr : public Value
 {
     int ref;
     QString value;
 
-    bool operator<(const UTF_8_vr & other) const {
-        if (ref >=0 )
-            return ref < other.ref;
-        else
-            return value < other.value;
-    }
+public:
+    UTF_8_vr();
 
-    bool read(QIODevice & dev)
-    {
-        U29 m;
-        if (!m.read(dev))
-            return false;
-        if (m.m_value & 0x1) { // value
-            ref = -1;
-            value = dev.read(m.m_value >> 1);
-            if (dev.atEnd() && value.length() == 0) // detect EOF
-                return false;
-        } else { // ref
-            ref = m.m_value >> 1;
-        }
-        return true;
-    }
+    bool operator<(const UTF_8_vr & other) const;
+
+    void read(QIODevice & dev);
 
     QString toString() const {
         if (ref >=0)
@@ -100,8 +49,9 @@ struct UTF_8_vr : public Serializable
 
 };
 
-struct undefined_type : public Serializable
+class undefined_type : public Value
 {
+public:
     virtual bool read(QIODevice & dev) {
         return true; // has nosize
     }
@@ -110,15 +60,15 @@ struct undefined_type : public Serializable
         return dev.putChar(0); // Just marker
     }
 
-
     virtual QString toString() const {
         return QString("[undefined]");
     }
 
 };
 
-struct null_type : public Serializable
+class null_type : public Value
 {
+public:
     virtual bool read(QIODevice & dev) {
         return true; // has nosize
     }
@@ -133,8 +83,9 @@ struct null_type : public Serializable
 
 };
 
-struct false_type : public Serializable
+class false_type : public Value
 {
+public:
     virtual bool read(QIODevice & dev) {
         return true; // has nosize
     }
@@ -149,8 +100,9 @@ struct false_type : public Serializable
 
 };
 
-struct true_type : public Serializable
+class true_type : public Value
 {
+public:
     virtual bool read(QIODevice & dev) {
         return true; // has nosize
     }
@@ -165,82 +117,36 @@ struct true_type : public Serializable
 
 };
 
-struct integer_type : public U29
+class integer_type : public U29
 {
-    virtual bool read(QIODevice & dev) {
-        return U29::read(dev);
-    }
-
-    virtual bool write(QIODevice &dev) {
-        return U29::write(dev);
-    }
+public:
+    void write(QIODevice &dev) const throw();
 
     virtual QString toString() const {
         return QString("[int:%1]").arg(U29::toString());
     }
 };
 
-struct string_type : public UTF_8_vr
+class string_type : public UTF_8_vr
 {
-    virtual bool read(QIODevice & dev) {
-        return UTF_8_vr::read(dev);
-    }
-
+public:
     virtual QString toString() const {
         return QString("[string:%1]").arg(UTF_8_vr::toString());
     }
 };
 
-
-
-struct array_type : public Serializable // TODO: sparse arrays
+class array_type : public Value // TODO: sparse arrays
 {
-    QVector<Serializable*> data;
-    QMap<UTF_8_vr, Serializable*> assoc; // assoc part
+    QVector<Value*> data;
+    QMap<UTF_8_vr, Value*> assoc; // assoc part
+public:
 
-    virtual bool read(QIODevice & dev) {
-        U29 cnt;
-        if (!cnt.read(dev))
-            return false;
+    void read(QIODevice & dev, const Parser & parser) throw();
 
-        qDeleteAll(data);
-        qDeleteAll(assoc);
-        data.clear();
-        assoc.clear();
+    bool isComplex() const { return true; }
 
-        if (cnt.m_value & 0x1) { // Normal array
-            int siz = cnt.m_value >> 1;
-            data.reserve(siz); // size of dense part
-            UTF_8_vr v;
-            while (v.read(dev)) { // fill assoc
-                if (v.value.isEmpty()) // If empty -> this was last element of assoc. array
-                    break;
-                assoc[v] = parse_value(dev); // parse assoc value
-            }
-            for (int i=0; i<siz; i++) { // fill dense
-                data.append(parse_value(dev));
-            }
-        } else { // ref
-            return false;
-        }
-
-
-        return true;
-    }
-
-    virtual QString toString() const {
-        QString v = QString("[array[%1]: ").arg(data.size());
-        Serializable * s;
-        if (assoc.size()) {
-            foreach (UTF_8_vr key, assoc.keys()) { //semi optimal
-                v.append("{ ").append(key.toString()).append(" : ").append(assoc[key]->toString()).append("}");
-            }
-        }
-        foreach(s, data)
-            v.append(s->toString()).append(", ");
-        v.append("]");
-        return v;
-    }
+    virtual QString toString() const;
 };
+
 } // namespace
 #endif // AMF3VARS_H

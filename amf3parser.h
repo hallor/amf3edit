@@ -1,13 +1,15 @@
 #ifndef AMF3PARSER_H
 #define AMF3PARSER_H
-#include "parser.h"
+#include "Parser.h"
 
 class Variable;
+class Value;
 class Amf3Parser : public Parser
 {
 public:
     Amf3Parser();
-    Variable * read(QIODevice & dev) const throw();
+    Variable * readVariable(QIODevice & dev) const throw();
+    Value * readValue(QIODevice & dev) const throw();
 };
 
 #endif // AMF3PARSER_H

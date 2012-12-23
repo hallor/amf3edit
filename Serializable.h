@@ -8,8 +8,6 @@ public:
     virtual QString toString() const {
         return QString("[serializable]");
     }
-    // Returns true if type is complex
-    virtual bool isComplex() { return false; }
 };
 
 #endif // SERIALIZABLE_H
