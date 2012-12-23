@@ -25,6 +25,9 @@ public:
         return QString("[U29:%1]").arg(m_value);
     }
 
+    QString valueToString() const {
+        return QString("%1").arg(m_value);
+    }
 };
 
 class UTF_8_vr : public Value
@@ -38,9 +41,16 @@ public:
 
     QString toString() const {
         if (ref >=0)
-            return QString("[utf-8-r:%1]").arg(ref);
+            return QString("[utf-8-r:%1]").arg(valueToString());
         else
-            return QString("[utf-8-v:'%1']").arg(m_value);
+            return QString("[utf-8-v:%1]").arg(valueToString());
+    }
+
+    QString valueToString() const {
+        if (ref >=0)
+            return QString("@%1").arg(ref);
+        else
+            return QString("'%1'").arg(m_value);
     }
 
     QString value() const {
@@ -66,8 +76,8 @@ public:
         dev.putChar(0); // Just marker
     }
 
-    QString toString() const {
-        return QString("[undefined]");
+    QString valueToString() const {
+        return QString("undefined");
     }
 
 };
@@ -81,8 +91,8 @@ public:
         dev.putChar(0x1); // Just marker
     }
 
-    QString toString() const {
-        return QString("[null]");
+    QString valueToString() const {
+        return QString("null");
     }
 
 };
@@ -96,8 +106,8 @@ public:
         dev.putChar(0x2); // Just marker
     }
 
-    QString toString() const {
-        return QString("[false]");
+    QString valueToString() const {
+        return QString("false");
     }
 
 };
@@ -111,8 +121,8 @@ public:
         dev.putChar(0x3); // Just marker
     }
 
-    QString toString() const {
-        return QString("[true]");
+    QString valueToString() const {
+        return QString("true");
     }
 
 };
@@ -123,7 +133,11 @@ public:
     void write(QIODevice &dev) const;
 
     QString toString() const {
-        return QString("[int:%1]").arg(U29::toString());
+        return QString("[int:%1]").arg(value());
+    }
+
+    QString valueToString() const {
+        return QString::number(value());
     }
 };
 
@@ -131,7 +145,7 @@ class string_type : public UTF_8_vr
 {
 public:
     QString toString() const {
-        return QString("[string:%1]").arg(UTF_8_vr::toString());
+        return QString("[string:%1]").arg(UTF_8_vr::value());
     }
 };
 

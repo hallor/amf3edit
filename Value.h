@@ -7,11 +7,11 @@ class Value : public Serializable
 {
 public:
     virtual QString toString() const {
-        return QString("[value]");
+        return QString("[%1]").arg(valueToString());
     }
 
-    virtual QString valueAsString() const {
-        return QString("??");
+    virtual QString valueToString() const {
+        return QString("value");
     }
 
     // Returns true if type is complex

@@ -45,7 +45,7 @@ void Variable::read(QIODevice &dev)
 
 QString Variable::toString() const
 {
-    return QString("<%1:%2>").arg(m_name->toString())
+    return QString("<%1:%2>").arg(m_name->valueToString())
             .arg(m_value->toString());
 }
 
@@ -59,6 +59,6 @@ bool Variable::isComplex()
 QString Variable::name() const
 {
     if (m_name)
-        return m_name->valueAsString();
+        return m_name->value();
     return QString("??");
 }

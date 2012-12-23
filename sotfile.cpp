@@ -86,7 +86,7 @@ QString SotFile::toString() const
     v = QString("[RootName: '%1']\n[Version: %2]\n").arg(m_rootName).arg(m_version);
 
     foreach(Variable * var, m_data)
-        v.append(var->toString());
+        v.append(var->toString()+"\n");
 
     return v;
 }

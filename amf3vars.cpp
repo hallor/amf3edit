@@ -105,16 +105,16 @@ void array_type::read(QIODevice &dev)
 
 QString array_type::toString() const
 {
-    QString v = QString("[array[%1]: ").arg(data.size());
+    QString v = QString("[array[%1]:{").arg(data.size());
     Value * s;
     if (assoc.size()) {
         foreach (UTF_8_vr key, assoc.keys()) { //semi optimal
-            v.append("{ ").append(key.toString()).append(" : ").append(assoc[key]->toString()).append("}");
+            v.append("{").append(key.toString()).append(" : ").append(assoc[key]->toString()).append("}");
         }
     }
     foreach(s, data)
         v.append(s->toString()).append(", ");
-    v.append("]");
+    v.append("}]");
     return v;
 }
 
