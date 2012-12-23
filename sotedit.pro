@@ -15,4 +15,15 @@ CONFIG   -= app_bundle
 TEMPLATE = app
 
 
-SOURCES += main.cpp
+SOURCES += main.cpp \
+    amf3parser.cpp \
+    sotfile.cpp \
+    amfparser.cpp \
+    variable.cpp
+
+HEADERS += \
+    amf3parser.h \
+    Serializable.h \
+    sotfile.h \
+    amfparser.h \
+    variable.h
