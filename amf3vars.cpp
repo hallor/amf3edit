@@ -8,6 +8,10 @@ using namespace amf3;
 /////////////////////////////////////////////// U29
 U29::U29() : m_value(42) {}
 
+U29::U29(const U29 *other) : m_value(other->m_value)
+{
+}
+
 void U29::read(QIODevice & dev)
 {
     m_value=0;
@@ -74,29 +78,38 @@ void integer_type::write(QIODevice &dev) const
 
 
 //////////////////////////////////////////////// ARRAY
+array_type::array_type(const array_type *other) : m_parser(other->m_parser)
+{
+    m_data.reserve(other->m_data.count());
+    foreach(Value* v, other->m_data)
+        m_data.push_back(v->clone());
+    foreach(UTF_8_vr key, other->m_assoc.keys())
+        m_assoc[key] = other->m_assoc[key]->clone();
+}
+
 void array_type::read(QIODevice &dev)
 {
     U29 cnt;
 
     cnt.read(dev);
 
-    qDeleteAll(data);
-    qDeleteAll(assoc);
-    data.clear();
-    assoc.clear();
+    qDeleteAll(m_data);
+    qDeleteAll(m_assoc);
+    m_data.clear();
+    m_assoc.clear();
 
     if (cnt.value() & 0x1) { // Normal array
         int siz = cnt.value() >> 1;
-        data.reserve(siz); // size of dense part
+        m_data.reserve(siz); // size of dense part
         UTF_8_vr v;
         while (!dev.atEnd()) { // fill assoc
             v.read(dev);
             if (v.value().isEmpty()) // If empty -> this was last element of assoc. array
                 break;
-            assoc[v] = parser.readValue(dev); // parse assoc value
+            m_assoc[v] = m_parser.readValue(dev); // parse assoc value
         }
         for (int i=0; i<siz; i++) { // fill dense
-            data.append(parser.readValue(dev));
+            m_data.append(m_parser.readValue(dev));
         }
     } else { // ref
         throw ReadException(dev, "Referenced arrays not supported.");
@@ -105,17 +118,36 @@ void array_type::read(QIODevice &dev)
 
 QString array_type::toString() const
 {
-    QString v = QString("[array[%1]:{").arg(data.size());
+    QString v = QString("[array[%1]:{").arg(m_data.size());
     Value * s;
-    if (assoc.size()) {
-        foreach (UTF_8_vr key, assoc.keys()) { //semi optimal
-            v.append("{").append(key.toString()).append(" : ").append(assoc[key]->toString()).append("}");
+    if (m_assoc.size()) {
+        foreach (UTF_8_vr key, m_assoc.keys()) { //semi optimal
+            v.append("{").append(key.toString()).append(" : ").append(m_assoc[key]->toString()).append("}");
         }
     }
-    foreach(s, data)
+    foreach(s, m_data)
         v.append(s->toString()).append(", ");
     v.append("}]");
     return v;
+}
+
+// TODO: fix it somehow
+bool array_type::cmpInternal(const Value *other) const
+{
+    const array_type *a = dynamic_cast<const array_type*>(other);
+    if (m_data.count() != a->m_data.count())
+        return m_data.count() < a->m_data.count();
+    if (m_assoc.count() != a->m_assoc.count())
+        return m_assoc.count() < a->m_assoc.count();
+    // Compare dense arrays
+    for (int i=0; i<m_data.count(); i++) {
+        if ( !(m_data[i] < a->m_data[i]) )
+            return true;
+    }
+    // Compare sparse arrays
+#warning TODO
+    // Check values
+    return false; // equal
 }
 
 

@@ -1,7 +1,7 @@
 #ifndef SOTFILE_H
 #define SOTFILE_H
 #include <QString>
-#include <QList>
+#include <QVector>
 
 class Variable;
 class QIODevice;
@@ -21,12 +21,12 @@ public:
     QString toString() const;
 
     // Editable tree, variables have one instance and should be not removed for now. Class owns data.
-    QList<Variable*> getTree() { return m_data; }
+    QVector<Variable*> getTree() { return m_data; }
 private:
     QString m_rootName;
     quint8 m_version;
     bool m_bigEndian;
-    QList<Variable*> m_data;
+    QVector<Variable*> m_data;
 };
 
 #endif // SOTFILE_H

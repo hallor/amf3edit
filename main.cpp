@@ -1,13 +1,14 @@
-#include <QtCore/QCoreApplication>
+#include <QtGui/QApplication>
 #include <QFile>
 #include <stdio.h>
 
 #include "exception.h"
 #include "sotfile.h"
-
+#include "sotmodel.h"
+#include "mainwindow.h"
 int main(int argc, char *argv[])
 {
-    QCoreApplication a(argc, argv);
+    QApplication a(argc, argv);
 
     QFile in;
 
@@ -31,5 +32,10 @@ int main(int argc, char *argv[])
     printf("%s\n", f.toString().toAscii().constData());
     printf("Finished @%llX\n", in.pos());
 
-    return 0;//a.exec();
+//    SotModel sm(f);
+//    MainWindow mw();
+
+//    mw.show();
+return 0;
+//    return a.exec();
 }

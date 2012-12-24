@@ -4,9 +4,7 @@
 #
 #-------------------------------------------------
 
-QT       += core
-
-QT       -= gui
+QT       += core gui
 
 TARGET = sotedit
 CONFIG   += console
@@ -20,7 +18,10 @@ SOURCES += main.cpp \
     sotfile.cpp \
     amfparser.cpp \
     Variable.cpp \
-    amf3vars.cpp
+    amf3vars.cpp \
+    mainwindow.cpp \
+    sotmodel.cpp \
+    sotstream.cpp
 
 HEADERS += \
     amf3parser.h \
@@ -31,4 +32,10 @@ HEADERS += \
     Parser.h \
     amf3vars.h \
     exception.h \
-    Value.h
+    Value.h \
+    mainwindow.h \
+    sotmodel.h \
+    sotstream.h
+
+FORMS += \
+    mainwindow.ui
