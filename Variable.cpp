@@ -7,7 +7,7 @@
 using amf3::UTF_8_vr;
 using std::auto_ptr;
 
-Variable::Variable(const Parser & parser) : m_parser(parser), m_name(NULL), m_value(NULL)
+Variable::Variable(const Parser & parser) : Serializable(), m_parser(parser), m_name(NULL), m_value(NULL)
 {
 }
 
@@ -41,6 +41,9 @@ void Variable::read(QIODevice &dev)
 
     if (x!=0) // This should not happen
         throw ReadException(dev, "WTF");
+
+    m_name->setParent(this);
+    m_value->setParent(this);
 }
 
 QString Variable::toString() const
@@ -61,4 +64,9 @@ QString Variable::name() const
     if (m_name)
         return m_name->value();
     return QString("??");
+}
+
+bool Variable::cmpInternal(const Value *other) const
+{
+    return m_name < other->m
 }

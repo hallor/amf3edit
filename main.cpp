@@ -24,7 +24,7 @@ int main(int argc, char *argv[])
     SotFile f;
 
     try {
-        f.load(in);
+        f.read(in);
     } catch (ReadException & e) {
         printf("%s\n", e.what());
     }

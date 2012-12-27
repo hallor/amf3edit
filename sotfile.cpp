@@ -23,7 +23,7 @@ SotFile::~SotFile()
 }
 
 // TODO: nice handle of >> reads
-void SotFile::load(QIODevice & from)
+void SotFile::read(QIODevice & from)
 {
     if (m_data.count()) {
         qDeleteAll(m_data);
@@ -74,8 +74,10 @@ void SotFile::load(QIODevice & from)
         Variable * v;
 
         v = p->readVariable(from);
-        if (v)
+        if (v) {
+            v->setParent(NULL); // Parentless == top
             m_data.push_back(v);
+        }
     }
 }
 
@@ -91,7 +93,7 @@ QString SotFile::toString() const
     return v;
 }
 
-void SotFile::save(QIODevice & /*to*/) const
+void SotFile::write(QIODevice & /*to*/) const
 {
 
     throw std::logic_error("Not implemented");

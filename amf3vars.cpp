@@ -106,10 +106,15 @@ void array_type::read(QIODevice &dev)
             v.read(dev);
             if (v.value().isEmpty()) // If empty -> this was last element of assoc. array
                 break;
-            m_assoc[v] = m_parser.readValue(dev); // parse assoc value
+            Value * val = m_parser.readValue(dev); // parse assoc value
+            v.setParent(this);
+            val->setParent(this);
+            m_assoc[v] = val;
         }
         for (int i=0; i<siz; i++) { // fill dense
-            m_data.append(m_parser.readValue(dev));
+            Value * val = m_parser.readValue(dev); // parse assoc value
+            val->setParent(this);
+            m_data.append(val);
         }
     } else { // ref
         throw ReadException(dev, "Referenced arrays not supported.");

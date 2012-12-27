@@ -1,15 +1,14 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
 #include <QString>
-#include "Serializable.h"
+#include "Value.h"
 
 class Parser;
 namespace amf3 {
 class UTF_8_vr;
 }
 class QIODevice;
-class Value;
-class Variable : public Serializable
+class Variable : public Value
 {
 public:
     Variable(const Parser & parser);
@@ -25,6 +24,11 @@ public:
     const Value* value() const { return m_value; }
     Value * value() { return m_value; }
 
+    ValueTypes type() const {
+        return TypeVariable;
+    }
+protected:
+    bool cmpInternal(const Value * other) const;
 private:
     const Parser & m_parser;
     amf3::UTF_8_vr * m_name;

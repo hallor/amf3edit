@@ -10,6 +10,7 @@ class Value : public Serializable
 public:
     typedef enum {
         TypeValue = 0,
+        TypeVariable,
         TypeAMFBase = 0x50,
         TypeAMF3Base = 0x100
     } ValueTypesBase;
